@@ -19,7 +19,8 @@
     ],
     "pack_uuid": "1b556331-c5b3-4ccd-a7c4-54771ec9c7bb",
     "data_module_uuid": "40cf64e9-a527-485f-a7d0-7cf4bb5126c0",
-    "resource_module_uuid": "b64b6353-5b00-41e3-b8d5-c48de57bf1d7"
+    "resource_module_uuid": "b64b6353-5b00-41e3-b8d5-c48de57bf1d7",
+    "script_module_uuid": "572cbd50-36ff-4066-a25c-01a4f35ed9f0"
   },
   "features": {
     "scriptapi": true,
