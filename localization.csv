@@ -3,5 +3,4 @@ pack.name,Simple Vehicles Add-On Mini,,,,,,,,,,,,,,,,,,,,,,,,,,
 pack.project_description,Simveh Mini Packs,,,,,,,,,,,,,,,,,,,,,,,,,,
 pack.resource_description,Simveh Mini Resource Pack,,,,,,,,,,,,,,,,,,,,,,,,,,
 pack.behaviour_description,Simveh Mini behavior Pack,,,,,,,,,,,,,,,,,,,,,,,,,,
-entity.sivemini:mini_car.name,Mini Car,,,,,,,,,,,,,,,,,,,,,,,,,,
-item.spawn_egg.entity.sivemini:mini_car.name,Mini Car,,,,,,,,,,,,,,,,,,,,,,,,,,
+entity.sivemini:mini_car.name,Mini Car
