@@ -10,6 +10,7 @@ from anvil import *
 
 if __name__ == "__main__":
     ANVIL.compile(extract_world=None)
+    ANVIL.translate()
     # ANVIL.package()
     mini_car()
     mini_car_black()

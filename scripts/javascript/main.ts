@@ -4,3 +4,7 @@
 //Property of Sivemini
 
 import { world, system } from "@minecraft/server";
+
+import "./vehicles/minicar_controller";
+
+console.warn("Steering System Loaded!");
