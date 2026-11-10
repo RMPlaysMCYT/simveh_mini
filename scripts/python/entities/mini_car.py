@@ -27,9 +27,9 @@ def mini_car ():
     )
 
 
-    rc = entity.client.description.add_render_component("mini_car")
+    rc = entity.client.description.render_controller("default")
     rc.set_geometry("mini_car")
-    rc.set_texture("mini_car", TextureComponents(color="mini_car"))
+    rc.add_texture("mini_car")
 
     entity.server.components.add(
         EntityCollisionBox(width=0.9, height=1.5),
