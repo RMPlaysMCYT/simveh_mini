@@ -1,6 +1,3 @@
-from anvil.api.actors.entity import Entity
-from anvil.api.pbr.texture_set import TextureComponents
-
 from anvil.api.actors.components import (
     EntityAILookAtPlayer,
     EntityAIRandomStroll,
@@ -14,6 +11,8 @@ from anvil.api.actors.components import (
     EntityPushableByEntity,
     EntityTypeFamily,
 )
+from anvil.api.actors.entity import Entity
+from anvil.api.pbr.texture_set import TextureComponents
 
 # Namespace is inferred from anvilconfig; only provide the short name here.
 def mini_car ():
@@ -49,3 +48,4 @@ def mini_car ():
     return entity
 
 
+MiniCar = mini_car()
