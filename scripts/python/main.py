@@ -4,6 +4,7 @@
 #Property of Sivemini
 
 from entities.mini_car import mini_car
+from entities.mini_car_black import mini_car_black
 
 from anvil import *
 
@@ -11,3 +12,4 @@ if __name__ == "__main__":
     ANVIL.compile(extract_world=None)
     # ANVIL.package()
     mini_car()
+    mini_car_black()
