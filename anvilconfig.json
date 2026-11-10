@@ -1,0 +1,43 @@
+{
+  "package": {
+    "namespace": "sivemini",
+    "project_name": "simveh_mini",
+    "company": "Sivemini",
+    "display_name": "Simveh Mini",
+    "project_description": "Simveh Mini Packs",
+    "behavior_description": "Simveh Mini behavior Pack",
+    "resource_description": "Simveh Mini Resource Pack",
+    "target": "world"
+  },
+  "manifest": {
+    "release": "1.0.0",
+    "rp_uuid": [
+      "dc923499-d361-48df-b212-3345c4ee4c93"
+    ],
+    "bp_uuid": [
+      "97afa25f-78e7-46a6-b7f3-4f9977d7cc3d"
+    ],
+    "pack_uuid": "1b556331-c5b3-4ccd-a7c4-54771ec9c7bb",
+    "data_module_uuid": "40cf64e9-a527-485f-a7d0-7cf4bb5126c0",
+    "resource_module_uuid": "b64b6353-5b00-41e3-b8d5-c48de57bf1d7"
+  },
+  "features": {
+    "scriptapi": true,
+    "scriptui": true,
+    "pbr": false,
+    "random_seed": false,
+    "experimental": false
+  },
+  "build": {
+    "preview": false,
+    "entry_point": "scripts/python/main.py",
+    "minify": false,
+    "add_stamp": true,
+    "local_export": false,
+    "js_bundle_script": "node esbuild.js"
+  },
+  "anvil": {
+    "last_check": "2026-11-10 04:32:57",
+    "vanilla_version": "1.26.60"
+  }
+}
