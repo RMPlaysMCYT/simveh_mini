@@ -38,7 +38,7 @@
     "js_bundle_script": "node esbuild.js"
   },
   "anvil": {
-    "last_check": "2026-11-10 04:32:57",
-    "vanilla_version": "1.26.60"
+    "last_check": "2026-11-11 22:18:34",
+    "vanilla_version": "1.26.60.5"
   }
 }
