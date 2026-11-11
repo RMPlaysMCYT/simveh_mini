@@ -37,11 +37,6 @@ def mini_car ():
         EntityHealth(value=20, max=20),
         EntityTypeFamily(family=["golem", "mob"]),
         EntityMovement(value=0.25),
-        EntityMovementBasic(),
-        EntityNavigationWalk(),
-        EntityJumpStatic(),
-        EntityAIRandomStroll(priority=3),
-        EntityAILookAtPlayer(priority=4),
     )
 
     entity.queue("entities")

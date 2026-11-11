@@ -1,157 +1,287 @@
 
 import {
-    world,
-    system,
     Entity,
-    EntityComponentTypes,
-    EntityRideableComponent,
     Player,
+    system,
+    world
 } from "@minecraft/server";
 
-// Change this to the namespace in anvilconfig.json.
 const VEHICLE_ID = "simveh:mini_car";
 
-// Vehicle tuning
-const MAX_FORWARD_SPEED = 0.38;
-const MAX_REVERSE_SPEED = 0.18;
+// Change these if your input or model orientation differs.
+const FORWARD_INPUT_SIGN = 1;
+const STEERING_INPUT_SIGN = 1;
+const MODEL_FORWARD_SIGN = 1;
 
-const TURN_RATE = 2.0;          // Degrees per tick
-const VELOCITY_RESPONSE = 0.20; // Acceleration/braking response
+// Movement values are in blocks/tick.
+const CONFIG = {
+    maxForwardSpeed: 0.40,
+    maxReverseSpeed: 0.18,
+    acceleration: 0.012,
+    reverseAcceleration: 0.008,
+    braking: 0.025,
+    friction: 0.006,
+    turnRate: 3.0,
+    velocityResponse: 0.35
+};
 
-const SEARCH_DISTANCE = 6;
-
-function clamp(value: number, min: number, max: number): number {
+function clamp(
+    value: number,
+    min: number,
+    max: number
+): number {
     return Math.max(min, Math.min(max, value));
 }
 
-/**
- * Find the Mini Car currently being ridden by this player.
- *
- * This prototype assumes the vehicle has one seat.
- */
-function findDrivenVehicle(player: Player): Entity | undefined {
-    const nearbyVehicles = player.dimension.getEntities({
-        type: VEHICLE_ID,
-        location: player.location,
-        maxDistance: SEARCH_DISTANCE,
-    });
+function approach(
+    value: number,
+    target: number,
+    step: number
+): number {
+    if (value < target) {
+        return Math.min(value + step, target);
+    }
 
-    for (const vehicle of nearbyVehicles) {
-        const rideable = vehicle.getComponent(
-            EntityComponentTypes.Rideable
-        ) as EntityRideableComponent | undefined;
+    return Math.max(value - step, target);
+}
 
-        if (!rideable) continue;
+export class MiniCar {
+    private entity: Entity;
+    private player: Player;
 
-        const riders = rideable.getRiders();
+    // Signed speed: forward positive, reverse negative.
+    private speed = 0;
 
-        if (riders.some(rider => rider.id === player.id)) {
-            return vehicle;
+    private intervalId: number | undefined;
+
+    constructor(entity: Entity, player: Player) {
+        this.entity = entity;
+        this.player = player;
+    }
+
+    start(): void {
+        if (this.intervalId !== undefined) return;
+
+        this.intervalId = system.runInterval(() => {
+            if (!this.isDriving()) {
+                this.stop();
+                return;
+            }
+
+            try {
+                this.update();
+            } catch (error) {
+                console.warn(`[MiniCar] ${error}`);
+                this.stop();
+            }
+        }, 1);
+    }
+
+    stop(): void {
+        if (this.intervalId !== undefined) {
+            system.clearRun(this.intervalId);
+            this.intervalId = undefined;
         }
     }
 
-    return undefined;
-}
-
-/**
- * Convert driver input into vehicle movement.
- */
-function driveVehicle(player: Player, vehicle: Entity): void {
-    try {
-        // X: left/right
-        // Y: forward/backward
-        const input = player.inputInfo.getMovementVector();
-
-        const steering = clamp(input.x, -1, 1);
-        const throttle = clamp(input.y, -1, 1);
-
-        const rotation = vehicle.getRotation();
-        const velocity = vehicle.getVelocity();
-
-        // Minecraft entity yaw is measured in degrees.
-        const currentYaw = rotation.y;
-        const yawRadians = currentYaw * Math.PI / 180;
-
-        // Current vehicle forward direction.
-        const forwardX = -Math.sin(yawRadians);
-        const forwardZ = Math.cos(yawRadians);
-
-        // Calculate current forward speed.
-        const currentForwardSpeed =
-            velocity.x * forwardX +
-            velocity.z * forwardZ;
-
-        // Determine steering direction.
-        // Reverse steering is inverted when backing up.
-        let travelDirection = Math.sign(currentForwardSpeed);
-
-        if (travelDirection === 0) {
-            travelDirection = Math.sign(throttle);
+    private isDriving(): boolean {
+        if (!this.entity.isValid || !this.player.isValid) {
+            return false;
         }
 
-        const speedRatio = clamp(
-            Math.abs(currentForwardSpeed) / MAX_FORWARD_SPEED,
+        const rideable = this.entity.getComponent(
+            "minecraft:rideable"
+        );
+
+        if (!rideable) return false;
+
+        const riders = rideable.getRiders();
+
+        // This prototype uses one driver seat.
+        return riders.some(
+            rider => rider.id === this.player.id
+        );
+    }
+
+    private update(): void {
+        const input = this.player.inputInfo.getMovementVector();
+
+        const throttle = clamp(
+            input.y * FORWARD_INPUT_SIGN,
+            -1,
+            1
+        );
+
+        const steering = clamp(
+            input.x * STEERING_INPUT_SIGN,
+            -1,
+            1
+        );
+
+        this.updateSpeed(throttle);
+        this.updateSteering(steering);
+        this.updateMotion();
+        this.updateHUD();
+    }
+
+    private updateSpeed(throttle: number): void {
+        if (Math.abs(throttle) < 0.05) {
+            // Slow down naturally without input.
+            this.speed = approach(
+                this.speed,
+                0,
+                CONFIG.friction
+            );
+        } else {
+            const targetSpeed = throttle > 0
+                ? throttle * CONFIG.maxForwardSpeed
+                : throttle * CONFIG.maxReverseSpeed;
+
+            // Apply stronger braking when changing direction.
+            const changingDirection =
+                this.speed * throttle < 0;
+
+            const rate = changingDirection
+                ? CONFIG.braking
+                : throttle > 0
+                    ? CONFIG.acceleration
+                    : CONFIG.reverseAcceleration;
+
+            this.speed = approach(
+                this.speed,
+                targetSpeed,
+                rate
+            );
+        }
+
+        if (Math.abs(this.speed) < 0.001) {
+            this.speed = 0;
+        }
+    }
+
+    private updateSteering(steering: number): void {
+        if (Math.abs(steering) < 0.05) return;
+        if (Math.abs(this.speed) < 0.005) return;
+
+        const rotation = this.entity.getRotation();
+
+        // Reverse driving changes the steering direction.
+        const direction = Math.sign(this.speed);
+
+        const speedFactor = clamp(
+            Math.abs(this.speed) / CONFIG.maxForwardSpeed,
             0,
             1
         );
 
-        // Turn less when moving slowly.
-        const steeringStrength = Math.max(0.20, speedRatio);
+        // Minimum steering response at low speeds.
+        const turningStrength = Math.max(
+            0.2,
+            speedFactor
+        );
 
-        const newYaw = currentYaw -
+        const yawChange =
             steering *
-            TURN_RATE *
-            steeringStrength *
-            travelDirection;
+            direction *
+            CONFIG.turnRate *
+            turningStrength;
 
-        // Apply vehicle rotation.
-        vehicle.setRotation({
+        this.entity.setRotation({
             x: rotation.x,
-            y: newYaw,
+            y: rotation.y - yawChange
         });
+    }
 
-        // Recalculate forward direction after steering.
-        const newYawRadians = newYaw * Math.PI / 180;
+    private updateMotion(): void {
+        const rotation = this.entity.getRotation();
+        const yaw = rotation.y * Math.PI / 180;
 
-        const newForwardX = -Math.sin(newYawRadians);
-        const newForwardZ = Math.cos(newYawRadians);
+        // Minecraft yaw = 0 points toward positive Z.
+        const forwardX =
+            -Math.sin(yaw) * MODEL_FORWARD_SIGN;
+        const forwardZ =
+            Math.cos(yaw) * MODEL_FORWARD_SIGN;
 
-        // Forward and reverse speed.
-        const targetSpeed = throttle >= 0
-            ? throttle * MAX_FORWARD_SPEED
-            : throttle * MAX_REVERSE_SPEED;
+        const targetX = forwardX * this.speed;
+        const targetZ = forwardZ * this.speed;
 
-        // Desired horizontal velocity.
-        const targetVelocityX = newForwardX * targetSpeed;
-        const targetVelocityZ = newForwardZ * targetSpeed;
+        const velocity = this.entity.getVelocity();
 
-        // Correct the current velocity gradually.
-        const impulseX =
-            (targetVelocityX - velocity.x) * VELOCITY_RESPONSE;
-
-        const impulseZ =
-            (targetVelocityZ - velocity.z) * VELOCITY_RESPONSE;
-
-        vehicle.applyImpulse({
-            x: impulseX,
+        // Adjust horizontal velocity toward the target.
+        // Leave vertical velocity alone for gravity.
+        this.entity.applyImpulse({
+            x: (targetX - velocity.x) *
+                CONFIG.velocityResponse,
             y: 0,
-            z: impulseZ,
+            z: (targetZ - velocity.z) *
+                CONFIG.velocityResponse
         });
+    }
 
-    } catch (error) {
-        console.warn(
-            `[Mini Car] Controller error: ${error}`
+    private updateHUD(): void {
+        const velocity = this.entity.getVelocity();
+
+        const speed = Math.hypot(
+            velocity.x,
+            velocity.z
+        );
+
+        const kmh = speed * 20 * 3.6;
+
+        const gear =
+            this.speed > 0.005 ? "D" :
+            this.speed < -0.005 ? "R" : "N";
+
+        this.player.onScreenDisplay.setActionBar(
+            `§eMini Car §7| §f${kmh.toFixed(1)} km/h` +
+            ` §7| §b${gear}`
         );
     }
 }
 
-// Run the vehicle controller every game tick.
+// Track active controllers by vehicle entity ID.
+const activeCars = new Map<string, MiniCar>();
+
 system.runInterval(() => {
+    const occupiedCars = new Set<string>();
+
     for (const player of world.getAllPlayers()) {
-        const vehicle = findDrivenVehicle(player);
+        const vehicles = player.dimension.getEntities({
+            type: VEHICLE_ID,
+            location: player.location,
+            maxDistance: 8
+        });
 
-        if (!vehicle) continue;
+        for (const vehicle of vehicles) {
+            const rideable = vehicle.getComponent(
+                "minecraft:rideable"
+            );
 
-        driveVehicle(player, vehicle);
+            if (!rideable) continue;
+
+            const riders = rideable.getRiders();
+
+            if (!riders.some(r => r.id === player.id)) {
+                continue;
+            }
+
+            occupiedCars.add(vehicle.id);
+
+            if (!activeCars.has(vehicle.id)) {
+                const car = new MiniCar(vehicle, player);
+                activeCars.set(vehicle.id, car);
+                car.start();
+            }
+
+            break;
+        }
     }
-}, 1);
+
+    // Stop controllers whose drivers have dismounted.
+    for (const [id, car] of activeCars) {
+        if (!occupiedCars.has(id)) {
+            car.stop();
+            activeCars.delete(id);
+        }
+    }
+}, 5);
