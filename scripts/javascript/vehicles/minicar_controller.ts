@@ -6,7 +6,10 @@ import {
     world
 } from "@minecraft/server";
 
-const VEHICLE_ID = "simveh:mini_car";
+const VEHICLE_ID = [
+    "sivemini:mini_car",
+    "sivemini:mini_car_black",
+] as const;
 
 // Change these if your input or model orientation differs.
 const FORWARD_INPUT_SIGN = 1;
@@ -240,44 +243,50 @@ export class MiniCar {
 }
 
 // Track active controllers by vehicle entity ID.
+
 const activeCars = new Map<string, MiniCar>();
 
 system.runInterval(() => {
     const occupiedCars = new Set<string>();
 
     for (const player of world.getAllPlayers()) {
-        const vehicles = player.dimension.getEntities({
-            type: VEHICLE_ID,
-            location: player.location,
-            maxDistance: 8
-        });
 
-        for (const vehicle of vehicles) {
-            const rideable = vehicle.getComponent(
-                "minecraft:rideable"
-            );
+        // Check both Mini Car variants.
+        for (const vehicleType of VEHICLE_ID) {
+            const vehicles = player.dimension.getEntities({
+                type: vehicleType,
+                location: player.location,
+                maxDistance: 8
+            });
 
-            if (!rideable) continue;
+            for (const vehicle of vehicles) {
+                const rideable = vehicle.getComponent(
+                    "minecraft:rideable"
+                );
 
-            const riders = rideable.getRiders();
+                if (!rideable) continue;
 
-            if (!riders.some(r => r.id === player.id)) {
-                continue;
+                const riders = rideable.getRiders();
+
+                const isDriver = riders.some(
+                    rider => rider.id === player.id
+                );
+
+                if (!isDriver) continue;
+
+                occupiedCars.add(vehicle.id);
+
+                if (!activeCars.has(vehicle.id)) {
+                    const car = new MiniCar(vehicle, player);
+
+                    activeCars.set(vehicle.id, car);
+                    car.start();
+                }
             }
-
-            occupiedCars.add(vehicle.id);
-
-            if (!activeCars.has(vehicle.id)) {
-                const car = new MiniCar(vehicle, player);
-                activeCars.set(vehicle.id, car);
-                car.start();
-            }
-
-            break;
         }
     }
 
-    // Stop controllers whose drivers have dismounted.
+    // Stop controllers when their drivers dismount.
     for (const [id, car] of activeCars) {
         if (!occupiedCars.has(id)) {
             car.stop();

@@ -39,6 +39,7 @@
   },
   "anvil": {
     "last_check": "2026-11-11 22:18:34",
-    "vanilla_version": "1.26.60.5"
+    "vanilla_version": "1.26.60.5",
+    "anvil_version": "1.0.2"
   }
 }
